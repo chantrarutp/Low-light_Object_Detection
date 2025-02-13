@@ -129,8 +129,8 @@ if file_path:
 
     # แสดงผลแยกหน้าต่าง
     cv2.imshow("Original Image", original_resized)
-    cv2.imshow("Enhanced Image", enhanced_resized)
+    #cv2.imshow("Enhanced Image", enhanced_resized)
     cv2.imshow("Sharped Image", sharped_resized)
-    cv2.imshow("Detected Image", detected_resized)
+    #cv2.imshow("Detected Image", detected_resized)
     cv2.waitKey(0)  # รอให้กดปุ่มใดๆ เพื่อปิดหน้าต่าง
     cv2.destroyAllWindows()
