@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 import torch
@@ -8,7 +7,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog
-import matplotlib.pyplot as plt  # เพิ่มไลบรารีสำหรับแสดงภาพ
+from ultralytics import YOLO
 
 # กำหนดอุปกรณ์ (ใช้ GPU ถ้ามี)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -67,6 +66,8 @@ model = ZeroDCE().to(device)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
+yolo_model = YOLO("best.pt")
+
 # ฟังก์ชันปรับปรุงภาพแสงน้อย
 def enhance_image(image_path, model, transform, device):
     original_image = Image.open(image_path).convert("RGB")  # โหลดภาพต้นฉบับ
@@ -85,6 +86,11 @@ def enhance_image(image_path, model, transform, device):
 
     return original_image, enhanced_image  # คืนค่าภาพต้นฉบับ + ภาพที่ปรับปรุงแล้ว
 
+def sharpen_image(image):
+    blurred = cv2.GaussianBlur(image, (5,5), 0)
+    sharped_image = cv2.addWeighted(image, 9.5, blurred, -8.5, 0)
+    return sharped_image
+
 # การแปลงภาพ
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
@@ -94,7 +100,7 @@ transform = transforms.Compose([
 # เลือกไฟล์ภาพจากคอมพิวเตอร์
 root = tk.Tk()
 root.withdraw()  # ซ่อนหน้าต่างหลัก
-file_path = filedialog.askopenfilename(title="เลือกภาพที่ต้องการปรับปรุง", filetypes=[("Image Files", "*.jpg;*.jpeg;*.png")])
+file_path = filedialog.askopenfilename(title="Choose file", filetypes=[("Image Files", "*.jpg;*.jpeg;*.png")])
 
 # ปรับปรุงภาพ
 if file_path:
@@ -104,6 +110,12 @@ if file_path:
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
 
+    # ปรับปรุงภาพด้วยการเพิ่มความชัด
+    sharped_image = sharpen_image(enhanced_cv)
+
+    results = yolo_model(sharped_image)  # รัน YOLO
+    detected_image = results[0].plot()  # แปลงผลลัพธ์เป็นภาพที่มี bounding box
+
     # ปรับขนาดหน้าต่างให้พอดีกับภาพ แต่ไม่เกิน 800x800 px
     max_size = 700
     h, w = original_cv.shape[:2]
@@ -112,9 +124,13 @@ if file_path:
 
     original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_LINEAR)
     enhanced_resized = cv2.resize(enhanced_cv, new_size, interpolation=cv2.INTER_LINEAR)
+    sharped_resized = cv2.resize(sharped_image, new_size, interpolation=cv2.INTER_LINEAR)
+    detected_resized = cv2.resize(detected_image, new_size, interpolation=cv2.INTER_LINEAR)
 
     # แสดงผลแยกหน้าต่าง
     cv2.imshow("Original Image", original_resized)
     cv2.imshow("Enhanced Image", enhanced_resized)
+    cv2.imshow("Sharped Image", sharped_resized)
+    cv2.imshow("Detected Image", detected_resized)
     cv2.waitKey(0)  # รอให้กดปุ่มใดๆ เพื่อปิดหน้าต่าง
     cv2.destroyAllWindows()
