@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog
-from ultralytics import YOLO
+from ultralytics import YOLO # type: ignore
 
 # กำหนดอุปกรณ์ (ใช้ GPU ถ้ามี)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -61,12 +61,12 @@ class ZeroDCE(nn.Module):
         return enhance_image_1,enhance_image,r
 
 # โหลดโมเดลจากไฟล์
-model_path = "Epoch99.pth"  # ใส่ path ที่คุณบันทึกไฟล์ Epoch99.pth
+model_path = "models/Epoch99.pth"  # ใส่ path ที่คุณบันทึกไฟล์ Epoch99.pth
 model = ZeroDCE().to(device)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
-yolo_model = YOLO("best.pt")
+yolo_model = YOLO("models/best.pt")
 
 # ฟังก์ชันปรับปรุงภาพแสงน้อย
 def enhance_image(image_path, model, transform, device):
@@ -88,7 +88,7 @@ def enhance_image(image_path, model, transform, device):
 
 def sharpen_image(image):
     blurred = cv2.GaussianBlur(image, (5,5), 0)
-    sharped_image = cv2.addWeighted(image, 9.5, blurred, -8.5, 0)
+    sharped_image = cv2.addWeighted(image, 5.5, blurred, -4.5, 0)
     return sharped_image
 
 # การแปลงภาพ
@@ -113,8 +113,8 @@ if file_path:
     # ปรับปรุงภาพด้วยการเพิ่มความชัด
     sharped_image = sharpen_image(enhanced_cv)
 
-    results = yolo_model(sharped_image)  # รัน YOLO
-    detected_image = results[0].plot()  # แปลงผลลัพธ์เป็นภาพที่มี bounding box
+    #results = yolo_model(sharped_image)  # รัน YOLO
+    #detected_image = results[0].plot()  # แปลงผลลัพธ์เป็นภาพที่มี bounding box
 
     # ปรับขนาดหน้าต่างให้พอดีกับภาพ แต่ไม่เกิน 800x800 px
     max_size = 700
@@ -123,9 +123,9 @@ if file_path:
     new_size = (int(w * scale), int(h * scale))
 
     original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_LINEAR)
-    enhanced_resized = cv2.resize(enhanced_cv, new_size, interpolation=cv2.INTER_LINEAR)
+    #enhanced_resized = cv2.resize(enhanced_cv, new_size, interpolation=cv2.INTER_LINEAR)
     sharped_resized = cv2.resize(sharped_image, new_size, interpolation=cv2.INTER_LINEAR)
-    detected_resized = cv2.resize(detected_image, new_size, interpolation=cv2.INTER_LINEAR)
+    #detected_resized = cv2.resize(detected_image, new_size, interpolation=cv2.INTER_LINEAR)
 
     # แสดงผลแยกหน้าต่าง
     cv2.imshow("Original Image", original_resized)
