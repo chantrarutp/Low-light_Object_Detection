@@ -16,10 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class ZeroDCE(nn.Module):
     def __init__(self):
         super(ZeroDCE, self).__init__()
-
-        # โครงสร้างที่ตรงกับการฝึกใน Epoch99.pth
         self.relu = nn.ReLU(inplace=True)
-
         number_f = 32
         self.e_conv1 = nn.Conv2d(3,number_f,3,1,1,bias=True)
         self.e_conv2 = nn.Conv2d(number_f,number_f,3,1,1,bias=True)
@@ -28,40 +25,28 @@ class ZeroDCE(nn.Module):
         self.e_conv5 = nn.Conv2d(number_f*2,number_f,3,1,1,bias=True)
         self.e_conv6 = nn.Conv2d(number_f*2,number_f,3,1,1,bias=True)
         self.e_conv7 = nn.Conv2d(number_f*2,24,3,1,1,bias=True)
-
-        self.maxpool = nn.MaxPool2d(2, stride=2, return_indices=False, ceil_mode=False)
-        self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
-        
+    
     def forward(self, x):
         x1 = self.relu(self.e_conv1(x))
-		# p1 = self.maxpool(x1)
         x2 = self.relu(self.e_conv2(x1))
-		# p2 = self.maxpool(x2)
         x3 = self.relu(self.e_conv3(x2))
-		# p3 = self.maxpool(x3)
         x4 = self.relu(self.e_conv4(x3))
-
         x5 = self.relu(self.e_conv5(torch.cat([x3,x4],1)))
-		# x5 = self.upsample(x5)
         x6 = self.relu(self.e_conv6(torch.cat([x2,x5],1)))
-
         x_r = F.tanh(self.e_conv7(torch.cat([x1,x6],1))) * 2.5
         r1,r2,r3,r4,r5,r6,r7,r8 = torch.split(x_r, 3, dim=1)
-
-
         x = x + r1*(torch.pow(x,2)-x)
         x = x + r2*(torch.pow(x,2)-x)
         x = x + r3*(torch.pow(x,2)-x)
-        enhance_image_1 = x + r4*(torch.pow(x,2)-x)		
-        x = enhance_image_1 + r5*(torch.pow(enhance_image_1,2)-enhance_image_1)		
+        enhance_image_1 = x + r4*(torch.pow(x,2)-x)
+        x = enhance_image_1 + r5*(torch.pow(enhance_image_1,2)-enhance_image_1)
         x = x + r6*(torch.pow(x,2)-x)
         x = x + r7*(torch.pow(x,2)-x)
         enhance_image = x + r8*(torch.pow(x,2)-x)
-        r = torch.cat([r1,r2,r3,r4,r5,r6,r7,r8],1)
-        return enhance_image_1,enhance_image,r
+        return enhance_image_1, enhance_image
 
 # โหลดโมเดลจากไฟล์
-model_path = "models/Epoch99.pth"  # ใส่ path ที่คุณบันทึกไฟล์ Epoch99.pth
+model_path = "models/Epoch99.pth"
 model = ZeroDCE().to(device)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
@@ -69,26 +54,22 @@ model.eval()
 yolo_model = YOLO("models/best.pt")
 
 # ฟังก์ชันปรับปรุงภาพแสงน้อย
+
 def enhance_image(image_path, model, transform, device):
-    original_image = Image.open(image_path).convert("RGB")  # โหลดภาพต้นฉบับ
-    original_size = original_image.size  # เก็บขนาดต้นฉบับ (width, height)
-
+    original_image = Image.open(image_path).convert("RGB")
+    original_size = original_image.size
     image = transform(original_image).unsqueeze(0).to(device)
-
     with torch.no_grad():
-        enhanced_image = model(image)[0].squeeze(0).cpu()  # ใช้ 'enhance_image_1' จากโมเดล
-
-    # แปลงกลับเป็น PIL Image
+        enhanced_image = model(image)[0].squeeze(0).cpu()
     enhanced_image = transforms.ToPILImage()(enhanced_image)
+    enhanced_image = enhanced_image.resize(original_size, Image.LANCZOS)
+    return original_image, enhanced_image
 
-    # 🔥 **Resize กลับไปเป็นขนาดเดิม**
-    enhanced_image = enhanced_image.resize(original_size, Image.BILINEAR)
-
-    return original_image, enhanced_image  # คืนค่าภาพต้นฉบับ + ภาพที่ปรับปรุงแล้ว
+# ฟังก์ชันเพิ่มความคมชัด
 
 def sharpen_image(image):
-    blurred = cv2.GaussianBlur(image, (5,5), 0)
-    sharped_image = cv2.addWeighted(image, 5.5, blurred, -4.5, 0)
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    sharped_image = cv2.filter2D(image, -1, kernel)
     return sharped_image
 
 # การแปลงภาพ
@@ -99,38 +80,21 @@ transform = transforms.Compose([
 
 # เลือกไฟล์ภาพจากคอมพิวเตอร์
 root = tk.Tk()
-root.withdraw()  # ซ่อนหน้าต่างหลัก
+root.withdraw()
 file_path = filedialog.askopenfilename(title="Choose file", filetypes=[("Image Files", "*.jpg;*.jpeg;*.png")])
 
-# ปรับปรุงภาพ
 if file_path:
     original_image, enhanced_image = enhance_image(file_path, model, transform, device)
-
-    # แปลงภาพ PIL เป็น OpenCV
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
-
-    # ปรับปรุงภาพด้วยการเพิ่มความชัด
-    sharped_image = sharpen_image(enhanced_cv)
-
-    #results = yolo_model(sharped_image)  # รัน YOLO
-    #detected_image = results[0].plot()  # แปลงผลลัพธ์เป็นภาพที่มี bounding box
-
-    # ปรับขนาดหน้าต่างให้พอดีกับภาพ แต่ไม่เกิน 800x800 px
+    sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
     max_size = 700
     h, w = original_cv.shape[:2]
-    scale = min(max_size / max(h, w), 1.0)  # คำนวณ scale factor โดยไม่เสียอัตราส่วน
+    scale = min(max_size / max(h, w), 1.0)
     new_size = (int(w * scale), int(h * scale))
-
-    original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_LINEAR)
-    #enhanced_resized = cv2.resize(enhanced_cv, new_size, interpolation=cv2.INTER_LINEAR)
-    sharped_resized = cv2.resize(sharped_image, new_size, interpolation=cv2.INTER_LINEAR)
-    #detected_resized = cv2.resize(detected_image, new_size, interpolation=cv2.INTER_LINEAR)
-
-    # แสดงผลแยกหน้าต่าง
+    original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_CUBIC)
+    sharped_resized = cv2.resize(sharped_image, new_size, interpolation=cv2.INTER_CUBIC)
     cv2.imshow("Original Image", original_resized)
-    #cv2.imshow("Enhanced Image", enhanced_resized)
     cv2.imshow("Sharped Image", sharped_resized)
-    #cv2.imshow("Detected Image", detected_resized)
-    cv2.waitKey(0)  # รอให้กดปุ่มใดๆ เพื่อปิดหน้าต่าง
+    cv2.waitKey(0)
     cv2.destroyAllWindows()
