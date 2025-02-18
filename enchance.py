@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog
-from ultralytics import YOLO # type: ignore
+from ultralytics import YOLO
 
 # กำหนดอุปกรณ์ (ใช้ GPU ถ้ามี)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -72,6 +72,11 @@ def sharpen_image(image):
     sharped_image = cv2.filter2D(image, -1, kernel)
     return sharped_image
 
+# ฟังก์ชันสำหรับตรวจจับวัตถุด้วย YOLO
+def detect_objects(image, model):
+    results = model(image)  # ทำการตรวจจับวัตถุ
+    return results
+
 # การแปลงภาพ
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
@@ -83,18 +88,26 @@ root = tk.Tk()
 root.withdraw()
 file_path = filedialog.askopenfilename(title="Choose file", filetypes=[("Image Files", "*.jpg;*.jpeg;*.png")])
 
+
 if file_path:
     original_image, enhanced_image = enhance_image(file_path, model, transform, device)
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
-    sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
+    #sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
+
+    # ตรวจจับวัตถุบนภาพที่ผ่านการปรับปรุงแล้ว
+    results = detect_objects(enhanced_cv, yolo_model)
+    annotated_cv = results[0].plot()
+
+    # ปรับขนาดภาพเพื่อแสดงผล
     max_size = 700
     h, w = original_cv.shape[:2]
     scale = min(max_size / max(h, w), 1.0)
     new_size = (int(w * scale), int(h * scale))
     original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_CUBIC)
-    sharped_resized = cv2.resize(sharped_image, new_size, interpolation=cv2.INTER_CUBIC)
+    detected_resized = cv2.resize(annotated_cv, new_size, interpolation=cv2.INTER_CUBIC)
+
     cv2.imshow("Original Image", original_resized)
-    cv2.imshow("Sharped Image", sharped_resized)
+    cv2.imshow("Detected Objects", detected_resized)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
