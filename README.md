@@ -1,1 +1,1 @@
-# Digital Image Processing - Object Detection
+# Digital Image Processing - Low Light Objection Detection

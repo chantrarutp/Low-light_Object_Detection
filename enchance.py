@@ -65,13 +65,6 @@ def enhance_image(image_path, model, transform, device):
     enhanced_image = enhanced_image.resize(original_size, Image.LANCZOS)
     return original_image, enhanced_image
 
-# ฟังก์ชันเพิ่มความคมชัด
-
-def sharpen_image(image):
-    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-    sharped_image = cv2.filter2D(image, -1, kernel)
-    return sharped_image
-
 # ฟังก์ชันสำหรับตรวจจับวัตถุด้วย YOLO
 def detect_objects(image, model):
     results = model(image)  # ทำการตรวจจับวัตถุ
@@ -93,10 +86,10 @@ if file_path:
     original_image, enhanced_image = enhance_image(file_path, model, transform, device)
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
-    #sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
+    sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
 
     # ตรวจจับวัตถุบนภาพที่ผ่านการปรับปรุงแล้ว
-    results = detect_objects(enhanced_cv, yolo_model)
+    results = detect_objects(sharped_image, yolo_model)
     annotated_cv = results[0].plot()
 
     # ปรับขนาดภาพเพื่อแสดงผล
