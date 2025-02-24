@@ -51,7 +51,7 @@ model = ZeroDCE().to(device)
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
-yolo_model = YOLO("models/best.pt")
+yolo_model = YOLO("models/yolo12s.pt")
 
 # ฟังก์ชันปรับปรุงภาพแสงน้อย
 
