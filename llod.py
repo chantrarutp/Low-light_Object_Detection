@@ -100,6 +100,6 @@ if file_path:
     detected_resized = cv2.resize(annotated_cv, new_size, interpolation=cv2.INTER_CUBIC)
 
     cv2.imshow("Original Image", original_resized)
-    cv2.imshow("Detected Objects", detected_resized)
+    cv2.imshow("Enchanted and Detected", detected_resized)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
