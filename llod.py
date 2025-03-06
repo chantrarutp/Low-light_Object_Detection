@@ -85,6 +85,8 @@ if file_path:
     original_image, enhanced_image = enhance_image(file_path, model, transform, device)
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
+
+    #Unsharp Masking ถ้ามากไปเกิด Ringing
     sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
 
     # ตรวจจับวัตถุบนภาพที่ผ่านการปรับปรุงแล้ว
@@ -96,8 +98,8 @@ if file_path:
     h, w = original_cv.shape[:2]
     scale = min(max_size / max(h, w), 1.0)
     new_size = (int(w * scale), int(h * scale))
-    original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_CUBIC)
-    detected_resized = cv2.resize(annotated_cv, new_size, interpolation=cv2.INTER_CUBIC)
+    original_resized = cv2.resize(original_cv, new_size, interpolation=cv2.INTER_LINEAR)
+    detected_resized = cv2.resize(annotated_cv, new_size, interpolation=cv2.INTER_LINEAR)
 
     cv2.imshow("Original Image", original_resized)
     cv2.imshow("Enchanted and Detected", detected_resized)
