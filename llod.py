@@ -71,7 +71,7 @@ def detect_objects(image, model):
 
 # การแปลงภาพ
 transform = transforms.Compose([
-    transforms.Resize((256, 256)),
+    transforms.Resize((512, 512)),
     transforms.ToTensor(),
 ])
 
@@ -86,8 +86,11 @@ if file_path:
     original_cv = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
     enhanced_cv = cv2.cvtColor(np.array(enhanced_image), cv2.COLOR_RGB2BGR)
 
+    # ปรับปรุงภาพหลังจากใช้ Zero-DCE
+    brightened_image = cv2.convertScaleAbs(enhanced_cv, alpha=1.3, beta=1)  # เพิ่มความสว่าง
+
     #Unsharp Masking ถ้ามากไปเกิด Ringing
-    sharped_image = cv2.addWeighted(enhanced_cv, 1.5, cv2.GaussianBlur(enhanced_cv, (0,0), 2), -0.5, 0)
+    sharped_image = cv2.addWeighted(brightened_image, 1.2, cv2.GaussianBlur(enhanced_cv, (0,0), 1), -0.2, 0)
 
     # ตรวจจับวัตถุบนภาพที่ผ่านการปรับปรุงแล้ว
     results = detect_objects(sharped_image, yolo_model)
